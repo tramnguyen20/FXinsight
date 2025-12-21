@@ -6,7 +6,6 @@
     <title>FXInsight – FX Dashboard</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-gauges/gauge.min.js"></script>
     <style>
         :root { 
             --bg: #0b1220; --panel: #020617; --border: #1e293b; --text: #cbd5f5; --accent: #2962ff; 
@@ -14,7 +13,6 @@
         }
         html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: sans-serif; overflow-x: hidden; }
 
-        /* ===== Header & Banner ===== */
         header {
             background: var(--header-bg);
             padding: 24px 20px;
@@ -34,7 +32,6 @@
             color: #8b949e;
         }
 
-        /* ===== Tabs ===== */
         #tabs {
             display: flex;
             justify-content: flex-start;
@@ -55,20 +52,17 @@
         .tab-btn:hover { background: var(--tab-hover); }
         .tab-btn.active { color: var(--accent); border-bottom: 3px solid var(--tab-active); }
 
-        /* ===== Tab content ===== */
         .tab-content { display: none; padding: 20px 16px; }
         .tab-content.active { display: block; }
 
-        /* ===== Toolbar & Chart Styles ===== */
         #toolbar {
             padding: 8px 16px; background: var(--panel);
             display: flex; flex-wrap: wrap; align-items: center; gap: 20px;
             border: 1px solid var(--border); border-radius: 8px;
         }
-        
         .control-group { display: flex; align-items: center; gap: 10px; font-size: 13px; }
         select, input { background: #1e293b; color: white; border: 1px solid #334155; padding: 5px 10px; border-radius: 4px; outline: none; }
-        
+
         .tf-btn {
             background: transparent; color: #8b949e; border: 1px solid transparent; padding: 4px 10px;
             cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 4px;
@@ -93,27 +87,148 @@
         #chart-container { position: relative; width: 100%; height: 550px; margin-top: 16px; }
         #chart { width: 100%; height: 100%; }
 
-        /* Technical Analysis Tab Styling */
+        /* TECH TAB – CSS gauges */
         .radar-grid {
             display: flex;
             justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 20px;
+            align-items: flex-end;
             background: var(--panel);
             padding: 40px 20px;
             border-radius: 12px;
             border: 1px solid var(--border);
+            margin-top: 20px;
         }
         .radar-card {
             text-align: center;
+            width: 250px;
+            transition: transform 0.3s ease;
         }
+        .radar-card:hover { transform: translateY(-8px); }
         .radar-card h3 {
-            margin-bottom: 15px;
             font-size: 16px;
-            color: var(--accent);
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+        .radar-card.summary { flex: 0 1 30%; }
+        .radar-card.normal { flex: 0 1 32%; }
+
+        .gauge-container-summary {
+            width: 230px;
+            height: 115px;
         }
 
-        /* Performance Table Styling */
+        .gauge-container {
+            position: relative;
+            width: 200px;
+            height: 100px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .gauge-arc {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 12px solid #334155;
+            box-sizing: border-box;
+        }
+        .gauge-color-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 200px; height: 200px;
+            border-radius: 50%;
+            border: 12px solid transparent;
+            border-top-color: #ef5350;
+            border-right-color: #26a69a;
+            transform: rotate(-45deg);
+            box-sizing: border-box;
+            z-index: 1;
+        }
+        .gauge-needle-path {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 2px;
+            height: 85px;
+            background: #ffffff;
+            transform-origin: bottom center;
+            transform: rotate(-90deg);
+            transition: transform 1.5s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+            z-index: 5;
+        }
+        .gauge-needle-path::after {
+            content: '';
+            position: absolute;
+            bottom: -5px; left: -4px;
+            width: 10px; height: 10px;
+            background: #ffffff;
+            border-radius: 50%;
+        }
+        .gauge-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 200px;
+            margin: 5px auto 0;
+            font-size: 11px;
+            color: #8b949e;
+        }
+        .gauge-status-text {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #2962ff;
+        }
+
+        .tech-indicators {
+            background: var(--panel);
+            margin: 30px 0 0 0;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .tech-indicators h3 {
+            margin: 0 0 20px 0;
+            color: var(--accent);
+            font-size: 20px;
+            text-align: center;
+        }
+        .indicators-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .indicators-table th,
+        .indicators-table td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+        .indicators-table th {
+            background: #1e293b;
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        .indicators-table td { color: var(--text); }
+        .signal {
+            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            text-align: center;
+            min-width: 100px;
+        }
+        .signal.strong-buy { background: rgba(38, 166, 154, 0.2); color: #26a69a; border: 1px solid #26a69a; }
+        .signal.buy { background: rgba(76, 175, 80, 0.15); color: #4caf50; border: 1px solid #4caf50; }
+        .signal.neutral { background: rgba(158, 158, 158, 0.1); color: #9e9e9e; border: 1px solid #9e9e9e; }
+        .signal.sell { background: rgba(239, 83, 80, 0.15); color: #ef5350; border: 1px solid #ef5350; }
+        .signal.strong-sell { background: rgba(244, 67, 54, 0.25); color: #f44336; border: 1px solid #f44336; }
+        .metric-value { font-family: monospace; font-weight: 600; }
+
         #perf-table {
             display: flex; justify-content: space-around; flex-wrap: wrap; background: var(--panel);
             margin: 20px 0; padding: 15px; border-radius: 12px; border: 1px solid var(--border);
@@ -137,118 +252,166 @@
 </head>
 <body>
 
-    <header>
-        <h1>FXInsight</h1>
-        <p>FX Trends, Performance & Forecasts</p>
-    </header>
+<header>
+    <h1>FXInsight</h1>
+    <p>FX Trends, Performance & Forecasts</p>
+</header>
 
-    <div id="tabs">
-        <button class="tab-btn active" data-tab="chart-tab">Dashboard</button>
-        <button class="tab-btn" data-tab="tech-tab">Technical Analysis</button>
-        <button class="tab-btn" data-tab="stats-tab">Stats</button>
-        <button class="tab-btn" data-tab="about-tab">About</button>
-    </div>
+<div id="tabs">
+    <button class="tab-btn active" data-tab="chart-tab">Dashboard</button>
+    <button class="tab-btn" data-tab="tech-tab">Technical Analysis</button>
+    <button class="tab-btn" data-tab="stats-tab">Stats</button>
+    <button class="tab-btn" data-tab="about-tab">About</button>
+</div>
 
-    <div id="chart-tab" class="tab-content active">
-        <div id="toolbar">
-            <div class="control-group">
-                <strong>Pairs:</strong>
-                <select id="pair">
-                    <option value="usd">USD / VND</option>
-                    <option value="eur">EUR / VND</option>
-                    <option value="cny">CNY / VND</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <button class="tf-btn" onclick="zoomTimeframe(5)">5D</button>
-                <button class="tf-btn" onclick="zoomTimeframe(22)">1M</button>
-                <button class="tf-btn" onclick="zoomTimeframe(66)">3M</button>
-                <button class="tf-btn" onclick="zoomTimeframe(132)">6M</button>
-                <button class="tf-btn" onclick="zoomTimeframe(252)">1Y</button>
-                <button class="tf-btn active" onclick="zoomTimeframe('all')">ALL</button>
-            </div>
+<div id="chart-tab" class="tab-content active">
+    <div id="toolbar">
+        <div class="control-group">
+            <strong>Pairs:</strong>
+            <select id="pair">
+                <option value="usd">USD / VND</option>
+                <option value="eur">EUR / VND</option>
+                <option value="cny">CNY / VND</option>
+            </select>
+        </div>
 
-            <div class="control-group dropdown">
-                <button class="tf-btn" style="border: 1px solid var(--border); padding: 5px 15px;">Indicators ▼</button>
-                <div class="dropdown-menu">
-                    <label class="dropdown-item"><input type="checkbox" onchange="toggleIndicator('sma', this.checked)"> SMA (50)</label>
-                    <label class="dropdown-item"><input type="checkbox" onchange="toggleIndicator('ema', this.checked)"> EMA (20)</label>
-                    <label class="dropdown-item"><input type="checkbox" onchange="toggleIndicator('rsi', this.checked)"> RSI (14)</label>
-                    <label class="dropdown-item"><input type="checkbox" onchange="toggleIndicator('macd', this.checked)"> MACD</label>
-                </div>
-            </div>
+        <div class="control-group">
+            <button class="tf-btn" onclick="zoomTimeframe(5,this)">5D</button>
+            <button class="tf-btn" onclick="zoomTimeframe(22,this)">1M</button>
+            <button class="tf-btn" onclick="zoomTimeframe(66,this)">3M</button>
+            <button class="tf-btn" onclick="zoomTimeframe(132,this)">6M</button>
+            <button class="tf-btn" onclick="zoomTimeframe(252,this)">1Y</button>
+            <button class="tf-btn active" onclick="zoomTimeframe('all',this)">ALL</button>
+        </div>
 
-            <div class="control-group">
-                <strong>Type:</strong>
-                <select id="chartType">
-                    <option value="candle">Candlestick</option>
-                    <option value="line">Line</option>
-                </select>
-            </div>
-
-            <div class="control-group" style="margin-left: auto;">
-                <strong>From:</strong> <input type="date" id="startDate" value="2025-01-01">
-                <strong>To:</strong> <input type="date" id="endDate">
+        <div class="control-group dropdown">
+            <button class="tf-btn" style="border: 1px solid var(--border); padding: 5px 15px;">Indicators ▼</button>
+            <div class="dropdown-menu">
+                <label class="dropdown-item"><input type="checkbox" onchange="toggleIndicator('sma', this.checked)"> SMA (50)</label>
+                <label class="dropdown-item"><input type="checkbox" onchange="toggleIndicator('ema', this.checked)"> EMA (20)</label>
+                <label class="dropdown-item"><input type="checkbox" onchange="toggleIndicator('rsi', this.checked)"> RSI (14)</label>
+                <label class="dropdown-item"><input type="checkbox" onchange="toggleIndicator('macd', this.checked)"> MACD</label>
             </div>
         </div>
 
-        <div id="loading">Loading...</div>
-
-        <div id="chart-container">
-            <div id="chart"></div>
-            <div id="floating-tooltip">
-                <div id="tt-date" style="border-bottom: 1px solid #30363d; margin-bottom: 6px; padding-bottom: 4px; color: #58a6ff;"></div>
-                <div id="ohlc-fields">
-                    <div class="tt-row"><span>Open:</span> <span id="tt-open"></span></div>
-                    <div class="tt-row"><span>High:</span> <span id="tt-high"></span></div>
-                    <div class="tt-row"><span>Low:</span> <span id="tt-low"></span></div>
-                </div>
-                <div class="tt-row"><span>Close:</span> <span id="tt-close"></span></div>
-            </div>
+        <div class="control-group">
+            <strong>Type:</strong>
+            <select id="chartType">
+                <option value="candle">Candlestick</option>
+                <option value="line">Line</option>
+            </select>
         </div>
 
-        <div id="perf-table">
-            <div class="perf-item"><span class="perf-label">1 Day</span><span id="p-1d" class="perf-val">--</span></div>
-            <div class="perf-item"><span class="perf-label">5 Days</span><span id="p-5d" class="perf-val">--</span></div>
-            <div class="perf-item"><span class="perf-label">1 Month</span><span id="p-1m" class="perf-val">--</span></div>
-            <div class="perf-item"><span class="perf-label">6 Months</span><span id="p-6m" class="perf-val">--</span></div>
-            <div class="perf-item"><span class="perf-label">Year to Date (YTD)</span><span id="p-ytd" class="perf-val">--</span></div>
-            <div class="perf-item"><span class="perf-label">1 Year</span><span id="p-1y" class="perf-val">--</span></div>
-            <div class="perf-item"><span class="perf-label">5 Years</span><span id="p-5y" class="perf-val">--</span></div>
-            <div class="perf-item"><span class="perf-label">Total Period</span><span id="p-all" class="perf-val">--</span></div>
+        <div class="control-group" style="margin-left: auto;">
+            <strong>From:</strong> <input type="date" id="startDate" value="2025-01-01">
+            <strong>To:</strong> <input type="date" id="endDate">
         </div>
     </div>
 
-    <div id="tech-tab" class="tab-content">
-        <div class="radar-grid">
-            <div class="radar-card">
-                <h3>Volatility Gauge</h3>
-                <canvas id="radar-volatility"></canvas>
+    <div id="loading">Loading...</div>
+
+    <div id="chart-container">
+        <div id="chart"></div>
+        <div id="floating-tooltip">
+            <div id="tt-date" style="border-bottom: 1px solid #30363d; margin-bottom: 6px; padding-bottom: 4px; color: #58a6ff;"></div>
+            <div id="ohlc-fields">
+                <div class="tt-row"><span>Open:</span> <span id="tt-open"></span></div>
+                <div class="tt-row"><span>High:</span> <span id="tt-high"></span></div>
+                <div class="tt-row"><span>Low:</span> <span id="tt-low"></span></div>
             </div>
-            <div class="radar-card">
-                <h3>Overall Summary</h3>
-                <canvas id="radar-overall"></canvas>
-            </div>
-            <div class="radar-card">
-                <h3>Trend (Moving Average)</h3>
-                <canvas id="radar-mavg"></canvas>
-            </div>
+            <div class="tt-row"><span>Close:</span> <span id="tt-close"></span></div>
         </div>
     </div>
 
-    <div id="stats-tab" class="tab-content">
-        <h2>Performance Stats</h2>
-        <p>Detailed statistics and historical analysis metrics.</p>
+    <div id="perf-table">
+        <div class="perf-item"><span class="perf-label">1 Day</span><span id="p-1d" class="perf-val">--</span></div>
+        <div class="perf-item"><span class="perf-label">5 Days</span><span id="p-5d" class="perf-val">--</span></div>
+        <div class="perf-item"><span class="perf-label">1 Month</span><span id="p-1m" class="perf-val">--</span></div>
+        <div class="perf-item"><span class="perf-label">6 Months</span><span id="p-6m" class="perf-val">--</span></div>
+        <div class="perf-item"><span class="perf-label">Year to Date (YTD)</span><span id="p-ytd" class="perf-val">--</span></div>
+        <div class="perf-item"><span class="perf-label">1 Year</span><span id="p-1y" class="perf-val">--</span></div>
+        <div class="perf-item"><span class="perf-label">5 Years</span><span id="p-5y" class="perf-val">--</span></div>
+        <div class="perf-item"><span class="perf-label">Total Period</span><span id="p-all" class="perf-val">--</span></div>
+    </div>
+</div>
+
+<div id="tech-tab" class="tab-content">
+    <div class="radar-grid">
+        <div class="radar-card normal">
+            <h3>Volatility (5D)</h3>
+            <div class="gauge-container">
+                <div class="gauge-arc"></div>
+                <div class="gauge-color-layer"></div>
+                <div class="gauge-needle-path" id="needle-vol"></div>
+            </div>
+            <div class="gauge-labels">
+                <span>Strong Sell</span>
+                <span>Neutral</span>
+                <span>Strong Buy</span>
+            </div>
+            <div class="gauge-status-text" id="status-vol">Neutral</div>
+        </div>
+
+        <div class="radar-card summary">
+            <h3>Overall Summary</h3>
+            <div class="gauge-container gauge-container-summary">
+                <div class="gauge-arc"></div>
+                <div class="gauge-color-layer"></div>
+                <div class="gauge-needle-path" id="needle-overall"></div>
+            </div>
+            <div class="gauge-labels">
+                <span>Strong Sell</span>
+                <span>Neutral</span>
+                <span>Strong Buy</span>
+            </div>
+            <div class="gauge-status-text" id="status-overall">Neutral</div>
+        </div>
+
+        <div class="radar-card normal">
+            <h3>Trend (MA50)</h3>
+            <div class="gauge-container">
+                <div class="gauge-arc"></div>
+                <div class="gauge-color-layer"></div>
+                <div class="gauge-needle-path" id="needle-trend"></div>
+            </div>
+            <div class="gauge-labels">
+                <span>Strong Sell</span>
+                <span>Neutral</span>
+                <span>Strong Buy</span>
+            </div>
+            <div class="gauge-status-text" id="status-trend">Neutral</div>
+        </div>
     </div>
 
-    <div id="about-tab" class="tab-content">
-        <h2>About FXInsight</h2>
-        <p>FXInsight is a real-time FX dashboard to track currency pairs and analyze trends.</p>
+    <div class="tech-indicators">
+        <h3>Technical Indicators</h3>
+        <table class="indicators-table">
+            <thead>
+                <tr>
+                    <th>Indicator</th>
+                    <th>Value</th>
+                    <th>Signal</th>
+                </tr>
+            </thead>
+            <tbody id="indicators-tbody">
+                <tr><td colspan="3" style="text-align: center; color: #8b949e;">Loading data...</td></tr>
+            </tbody>
+        </table>
     </div>
+</div>
+
+<div id="stats-tab" class="tab-content">
+    <h2>Performance Stats</h2>
+    <p>Detailed statistics and historical analysis metrics.</p>
+</div>
+
+<div id="about-tab" class="tab-content">
+    <h2>About FXInsight</h2>
+    <p>FXInsight is a real-time FX dashboard to track currency pairs and analyze trends.</p>
+</div>
 
 <script>
-    /* ===== Tab Switching ===== */
+    /* Tabs */
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
 
@@ -258,57 +421,25 @@
             tabContents.forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById(btn.dataset.tab).classList.add('active');
-            
-            // Resize chart if switching back to dashboard
             if(btn.dataset.tab === 'chart-tab') {
-                window.dispatchEvent(new Event('resize'));
+                setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
             }
         });
     });
 
-    /* ===== Gauge Initialization ===== */
-    const gaugeOptions = {
-        renderTo: null, width: 220, height: 220, units: '', minValue: 0, maxValue: 100,
-        majorTicks: ["Strong Sell","Sell","Neutral","Buy","Strong Buy"],
-        minorTicks: 2, strokeTicks: true,
-        highlights: [
-            { from: 0, to: 20, color: '#ef5350' },
-            { from: 20, to: 40, color: '#f28b82' },
-            { from: 40, to: 60, color: '#cccccc' },
-            { from: 60, to: 80, color: '#8bc34a' },
-            { from: 80, to: 100, color: '#26a69a' }
-        ],
-        colorPlate: "#020617", colorMajorTicks: "#cbd5f5", colorMinorTicks: "#cbd5f5", colorNumbers: "#cbd5f5",
-        colorNeedle: "rgba(200, 50, 50, 1)", needleType: "arrow", needleWidth: 3, animationDuration: 500, animationRule: "linear"
-    };
-
-    const gaugeVolatility = new RadialGauge({...gaugeOptions, renderTo: 'radar-volatility', title: "Volatility"}).draw();
-    const gaugeOverall    = new RadialGauge({...gaugeOptions, renderTo: 'radar-overall', title: "Summary"}).draw();
-    const gaugeMAvg       = new RadialGauge({...gaugeOptions, renderTo: 'radar-mavg', title: "Moving Average"}).draw();
-
-    function updateGauges() {
-        if (!currentRawData.length) return;
-        const last = currentRawData[currentRawData.length - 1];
-
-        // Volatility
-        let change5d = ((last.close - currentRawData[Math.max(0,currentRawData.length-6)].close) / currentRawData[Math.max(0,currentRawData.length-6)].close) * 100;
-        gaugeVolatility.value = Math.min(Math.abs(change5d)*20, 100);
-
-        // Overall
-        let ytdText = document.getElementById("p-ytd").innerText.replace("%","").replace("+","");
-        let ytd = parseFloat(ytdText) || 0;
-        gaugeOverall.value = Math.max(0, Math.min(100, (ytd+10)*5));
-
-        // Moving Average
-        const smaData = calcSMA(currentRawData, 50);
-        if(smaData.length){
-            const smaLast = smaData[smaData.length-1].value;
-            let delta = ((last.close - smaLast)/smaLast)*100; 
-            gaugeMAvg.value = Math.max(0, Math.min(100, 50 + delta*10));
-        }
+    /* Gauge helpers */
+    function scoreToDeg(score) {
+        return (score - 50) * (180 / 100); // 0..100 -> -90..+90
     }
 
-    /* ===== Data & Logic (UNTOUCHED) ===== */
+    function scoreToSignal(score) {
+        if (score >= 80) return 'Strong Buy';
+        if (score >= 60) return 'Buy';
+        if (score <= 20) return 'Strong Sell';
+        if (score <= 40) return 'Sell';
+        return 'Neutral';
+    }
+
     const DATA_URL = {
         usd: "https://docs.google.com/spreadsheets/d/1PwXlPTLd39JCKiXTUGx9DItgZN_B1gsRBshogpwfWIM/export?format=csv",
         eur: "https://docs.google.com/spreadsheets/d/1H5ry_L9kpXS8a_gPZnYgDUiaFaZGIiaSM06BgPrO8FQ/export?format=csv",
@@ -342,10 +473,10 @@
                 document.getElementById('tt-date').innerText = `${data.time.month}/${data.time.day}/${data.time.year}`;
                 const isLine = document.getElementById("chartType").value === 'line';
                 document.getElementById('ohlc-fields').style.display = isLine ? 'none' : 'block';
-                
+
                 const closeVal = isLine ? data.value : data.close;
                 document.getElementById('tt-close').innerText = closeVal.toLocaleString('en-US');
-                
+
                 if (!isLine) {
                     document.getElementById('tt-open').innerText = data.open.toLocaleString('en-US');
                     document.getElementById('tt-high').innerText = data.high.toLocaleString('en-US');
@@ -394,6 +525,92 @@
             }
         }
         return results;
+    }
+
+    function getPeriodChange(period) {
+        if (currentRawData.length <= period) return 0;
+        const startPrice = currentRawData[currentRawData.length - 1 - period].close;
+        const lastPrice = currentRawData[currentRawData.length - 1].close;
+        return ((lastPrice - startPrice) / startPrice) * 100;
+    }
+
+    function updateTechTab() {
+        if (!currentRawData.length) return;
+        const last = currentRawData[currentRawData.length - 1];
+
+        const change5d = getPeriodChange(5);
+        const oscScore = Math.min(Math.abs(change5d) * 15, 100);
+
+        const smaData = calcSMA(currentRawData, 50);
+        let trendScore = 50, maDelta = 0;
+        if (smaData.length) {
+            const smaLast = smaData[smaData.length - 1].value;
+            maDelta = ((last.close - smaLast) / smaLast) * 100;
+            trendScore = Math.max(0, Math.min(100, 50 + maDelta * 8));
+        }
+
+        const ytdEl = document.getElementById("p-ytd");
+        const ytdChange = ytdEl ? parseFloat(ytdEl.innerText.replace("%","").replace("+","")) || 0 : 0;
+        const overallScore = Math.max(0, Math.min(100, 50 + (ytdChange * 3) + (trendScore - 50) * 0.3));
+
+        const needleVol = document.getElementById('needle-vol');
+        const needleTrend = document.getElementById('needle-trend');
+        const needleOverall = document.getElementById('needle-overall');
+
+        if (needleVol) needleVol.style.transform = `rotate(${scoreToDeg(oscScore)}deg)`;
+        if (needleTrend) needleTrend.style.transform = `rotate(${scoreToDeg(trendScore)}deg)`;
+        if (needleOverall) needleOverall.style.transform = `rotate(${scoreToDeg(overallScore)}deg)`;
+
+        const statusVol = document.getElementById('status-vol');
+        const statusTrend = document.getElementById('status-trend');
+        const statusOverall = document.getElementById('status-overall');
+
+        if (statusVol) statusVol.textContent = scoreToSignal(oscScore);
+        if (statusTrend) statusTrend.textContent = scoreToSignal(trendScore);
+        if (statusOverall) statusOverall.textContent = scoreToSignal(overallScore);
+
+        const rsiData = calcRSI(currentRawData);
+        const rsiVal = rsiData.length ? rsiData[rsiData.length-1].value : null;
+
+        const rows = [];
+        if (rsiVal !== null) {
+            rows.push({
+                name: 'RSI (14)',
+                value: rsiVal.toFixed(1),
+                signal: scoreToSignal(rsiVal)
+            });
+        }
+        rows.push({
+            name: 'Volatility (5D) – Price Change',
+            value: (change5d >= 0 ? '+' : '') + change5d.toFixed(2) + '%',
+            signal: scoreToSignal(oscScore)
+        });
+        rows.push({
+            name: 'Trend (MA50) – Distance',
+            value: (maDelta >= 0 ? '+' : '') + maDelta.toFixed(2) + '%',
+            signal: scoreToSignal(trendScore)
+        });
+        rows.push({
+            name: 'YTD Performance',
+            value: (ytdChange >= 0 ? '+' : '') + ytdChange.toFixed(2) + '%',
+            signal: scoreToSignal(Math.max(0, Math.min(100, 50 + ytdChange * 3)))
+        });
+        rows.push({
+            name: 'Overall Summary Score',
+            value: overallScore.toFixed(0),
+            signal: scoreToSignal(overallScore)
+        });
+
+        const tbody = document.getElementById('indicators-tbody');
+        if (tbody) {
+            tbody.innerHTML = rows.map(r => `
+                <tr>
+                    <td>${r.name}</td>
+                    <td><span class="metric-value">${r.value}</span></td>
+                    <td><span class="signal ${r.signal.toLowerCase().replace(' ','-')}">${r.signal}</span></td>
+                </tr>
+            `).join('');
+        }
     }
 
     function toggleIndicator(type, isChecked) {
@@ -448,7 +665,8 @@
 
         const display = (id, val) => {
             const el = document.getElementById(id);
-            if (val === null) { el.innerText = "--"; return; }
+            if (!el) return;
+            if (val === null) { el.innerText = "--"; el.className = "perf-val"; return; }
             el.innerText = (val > 0 ? "+" : "") + val.toFixed(2) + "%";
             el.className = "perf-val " + (val >= 0 ? "val-up" : "val-down");
         };
@@ -463,10 +681,11 @@
         display("p-all", ((last.close - currentRawData[0].close) / currentRawData[0].close) * 100);
     }
 
-    function zoomTimeframe(bars) {
+    function zoomTimeframe(bars, el) {
         document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-        if(event) event.target.classList.add('active');
+        if (el) el.classList.add('active');
         const data = mainSeries.data();
+        if (!data || !data.length) return;
         if (bars === 'all') chart.timeScale().fitContent();
         else chart.timeScale().setVisibleRange({ from: data[Math.max(0, data.length - bars)].time, to: data[data.length - 1].time });
     }
@@ -483,8 +702,8 @@
 
     function renderDataWithGauges() {
         renderData();
-        calculatePerformance(); 
-        updateGauges();
+        calculatePerformance();
+        setTimeout(updateTechTab, 300);
     }
 
     function loadData(pair) {
@@ -514,11 +733,17 @@
         });
     }
 
-    document.getElementById("pair").addEventListener("change", e => { isFirstLoad = true; loadData(e.target.value); });
+    document.getElementById("pair").addEventListener("change", e => { 
+        isFirstLoad = true; 
+        loadData(e.target.value); 
+    });
+
     document.getElementById("chartType").addEventListener("change", () => {
         const type = document.getElementById("chartType").value;
         chart.removeSeries(mainSeries);
-        mainSeries = type === "candle" ? chart.addCandlestickSeries({ upColor: "#26a69a", downColor: "#ef5350" }) : chart.addLineSeries({ color: "#2962ff", lineWidth: 3 });
+        mainSeries = type === "candle"
+            ? chart.addCandlestickSeries({ upColor: "#26a69a", downColor: "#ef5350" })
+            : chart.addLineSeries({ color: "#2962ff", lineWidth: 3 });
         renderDataWithGauges();
     });
 
