@@ -393,8 +393,8 @@
     </div>
 
     <div class="tech-indicators">
-        <h3>Technical Indicators</h3>
-        <table class="indicators-table">
+        <h3>Oscillators</h3>
+        <table class="indicators-table" id="oscillators-table">
             <thead>
                 <tr>
                     <th>Indicator</th>
@@ -402,7 +402,23 @@
                     <th>Signal</th>
                 </tr>
             </thead>
-            <tbody id="indicators-tbody">
+            <tbody id="oscillators-tbody">
+                <tr><td colspan="3" style="text-align: center; color: #8b949e;">Loading data...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="tech-indicators">
+        <h3>Trend</h3>
+        <table class="indicators-table" id="trend-table">
+            <thead>
+                <tr>
+                    <th>Indicator</th>
+                    <th>Value</th>
+                    <th>Signal</th>
+                </tr>
+            </thead>
+            <tbody id="trend-tbody">
                 <tr><td colspan="3" style="text-align: center; color: #8b949e;">Loading data...</td></tr>
             </tbody>
         </table>
@@ -711,20 +727,32 @@
         document.getElementById('status-trend').innerText = scoreToSignal(trendScore);
         document.getElementById('status-overall').innerText = scoreToSignal(overallScore);
     
-        /* ===== TABLE ===== */
-        const rows = [
+        /* ===== OSCILLATORS TABLE ===== */
+        const oscillatorsRows = [
             { name: `RSI (${cfg.rsi})`, value: rsi.toFixed(2), score: rsiScore },
             { name: `MACD`, value: macd.toFixed(3), score: macdScore },
             { name: `Stochastic`, value: stoch.toFixed(2), score: stochScore },
             { name: `CCI`, value: cci.toFixed(2), score: cciScore },
             { name: `ADX`, value: adx.toFixed(2), score: adxScore },
-            { name: `Williams %R`, value: willr.toFixed(2), score: willrScore },
+            { name: `Williams %R`, value: willr.toFixed(2), score: willrScore }
+        ];
+        document.getElementById('oscillators-tbody').innerHTML = oscillatorsRows.map(r => {
+            const sig = scoreToSignal(r.score);
+            return `
+            <tr>
+                <td>${r.name}</td>
+                <td class="metric-value">${r.value}</td>
+                <td><span class="signal ${sig.toLowerCase().replace(' ','-')}">${sig}</span></td>
+            </tr>`;
+        }).join('');
+    
+        /* ===== TREND TABLE ===== */
+        const trendRows = [
             { name: `EMA20 Trend`, value: `${ema20Delta.toFixed(2)}%`, score: trendScore },
             { name: `EMA50 Trend`, value: `${ema50Delta.toFixed(2)}%`, score: trendScore },
             { name: `EMA200 Trend`, value: `${ema200Delta.toFixed(2)}%`, score: trendScore }
         ];
-    
-        document.getElementById('indicators-tbody').innerHTML = rows.map(r => {
+        document.getElementById('trend-tbody').innerHTML = trendRows.map(r => {
             const sig = scoreToSignal(r.score);
             return `
             <tr>
@@ -825,6 +853,7 @@
     function renderDataWithGauges() {
         renderData();
         calculatePerformance();
+        updateTechTimeframe(5, document.querySelector('[data-tf="5"]'));
         setTimeout(updateTechTab, 300);
     }
 
@@ -958,6 +987,7 @@
 
 </body>
 </html>
+
 
 
 
