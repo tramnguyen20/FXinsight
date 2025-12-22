@@ -362,7 +362,7 @@
         </div>
 
         <div class="radar-card summary">
-            <h3>Overall Summary</h3>
+            <h3>Summary</h3>
             <div class="gauge-container gauge-container-summary">
                 <div class="gauge-arc"></div>
                 <div class="gauge-color-layer"></div>
@@ -606,6 +606,44 @@
         return (slice.at(-1) - sma) / (0.015 * md);
     }
 
+    function calcADX(data, period = 14) {
+        if (data.length < period + 1) return 0;
+        let tr = [], plusDM = [], minusDM = [];
+    
+        for (let i = 1; i < data.length; i++) {
+            const upMove = data[i].high - data[i-1].high;
+            const downMove = data[i-1].low - data[i].low;
+    
+            plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+            minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
+    
+            tr.push(Math.max(
+                data[i].high - data[i].low,
+                Math.abs(data[i].high - data[i-1].close),
+                Math.abs(data[i].low - data[i-1].close)
+            ));
+        }
+    
+        const atr = tr.slice(-period).reduce((a,b)=>a+b,0) / period;
+        const pDI = 100 * (plusDM.slice(-period).reduce((a,b)=>a+b,0) / atr);
+        const mDI = 100 * (minusDM.slice(-period).reduce((a,b)=>a+b,0) / atr);
+    
+        return 100 * Math.abs(pDI - mDI) / (pDI + mDI);
+    }
+
+    function calcWilliamsR(data, period = 14) {
+        const slice = data.slice(-period);
+        const high = Math.max(...slice.map(d => d.high));
+        const low  = Math.min(...slice.map(d => d.low));
+        return -100 * (high - slice.at(-1).close) / (high - low);
+    }
+
+    function getEMASignal(price, ema) {
+        if (price > ema) return { score: 70, action: "Buy" };
+        if (price < ema) return { score: 30, action: "Sell" };
+        return { score: 50, action: "Neutral" };
+    }
+
     function getPeriodChange(period, data = currentRawData) {
         if (data.length <= period) return 0;
         const startPrice = data[data.length - 1 - period].close;
@@ -629,40 +667,45 @@
         const slice = data.slice(-tfBars);
         const last = slice.at(-1);
     
-        /* ===== INDICATORS ===== */
+        /* ===== OSCILLATORS ===== */
         const rsi = calcRSI(slice, cfg.rsi).at(-1)?.value ?? 50;
         const macd = calcMACDValue(slice);
         const stoch = calcStochasticValue(slice);
         const cci = calcCCIValue(slice);
+        const adx = calcADX(slice);
+        const willr = calcWilliamsR(slice);
     
-        /* ===== SCORES ===== */
         const rsiScore   = 100 - Math.abs(rsi - 50) * 2;
         const macdScore  = 50 + macd * 20;
         const stochScore = 100 - Math.abs(stoch - 50) * 2;
         const cciScore   = 100 - Math.min(Math.abs(cci) / 2, 100);
+        const adxScore   = Math.min(adx, 100);
+        const willrScore = 100 - Math.abs(willr - 50) * 2;
     
         const oscScore = Math.max(0, Math.min(100,
-            (rsiScore + macdScore + stochScore + cciScore) / 4
+            (rsiScore + macdScore + stochScore + cciScore + adxScore + willrScore) / 6
         ));
     
-        /* ===== TREND ===== */
-        const maPeriod = cfg.ma;
-        const maData = calcEMA(slice, maPeriod);
-        const maLast = maData.at(-1)?.value ?? last.close;
+        /* ===== TREND (EMA) ===== */
+        const ema20 = calcEMA(data, 20).at(-1)?.value;
+        const ema50 = calcEMA(data, 50).at(-1)?.value;
+        const ema200 = calcEMA(data, 200).at(-1)?.value;
     
-        const trendDelta = (last.close - maLast) / maLast * 100;
-        const trendScore = Math.max(0, Math.min(100, 50 + trendDelta * 10));
+        const ema20Delta = ema20 ? ((last.close - ema20) / ema20) * 100 : 0;
+        const ema50Delta = ema50 ? ((last.close - ema50) / ema50) * 100 : 0;
+        const ema200Delta = ema200 ? ((last.close - ema200) / ema200) * 100 : 0;
+    
+        const trendScore = Math.max(0, Math.min(100,
+            50 + (ema20Delta + ema50Delta + ema200Delta) / 3 * 10
+        ));
     
         /* ===== OVERALL ===== */
         const overallScore = 0.5 * oscScore + 0.5 * trendScore;
     
         /* ===== UPDATE GAUGES ===== */
-        document.getElementById('needle-vol').style.transform =
-            `rotate(${scoreToDeg(oscScore)}deg)`;
-        document.getElementById('needle-trend').style.transform =
-            `rotate(${scoreToDeg(trendScore)}deg)`;
-        document.getElementById('needle-overall').style.transform =
-            `rotate(${scoreToDeg(overallScore)}deg)`;
+        document.getElementById('needle-vol').style.transform = `rotate(${scoreToDeg(oscScore)}deg)`;
+        document.getElementById('needle-trend').style.transform = `rotate(${scoreToDeg(trendScore)}deg)`;
+        document.getElementById('needle-overall').style.transform = `rotate(${scoreToDeg(overallScore)}deg)`;
     
         document.getElementById('status-vol').innerText = scoreToSignal(oscScore);
         document.getElementById('status-trend').innerText = scoreToSignal(trendScore);
@@ -674,19 +717,22 @@
             { name: `MACD`, value: macd.toFixed(3), score: macdScore },
             { name: `Stochastic`, value: stoch.toFixed(2), score: stochScore },
             { name: `CCI`, value: cci.toFixed(2), score: cciScore },
-            { name: `EMA (${maPeriod}) Trend`, value: `${trendDelta.toFixed(2)}%`, score: trendScore }
+            { name: `ADX`, value: adx.toFixed(2), score: adxScore },
+            { name: `Williams %R`, value: willr.toFixed(2), score: willrScore },
+            { name: `EMA20 Trend`, value: `${ema20Delta.toFixed(2)}%`, score: trendScore },
+            { name: `EMA50 Trend`, value: `${ema50Delta.toFixed(2)}%`, score: trendScore },
+            { name: `EMA200 Trend`, value: `${ema200Delta.toFixed(2)}%`, score: trendScore }
         ];
     
-        document.getElementById('indicators-tbody').innerHTML =
-            rows.map(r => {
-                const sig = scoreToSignal(r.score);
-                return `
-                <tr>
-                    <td>${r.name}</td>
-                    <td class="metric-value">${r.value}</td>
-                    <td><span class="signal ${sig.toLowerCase().replace(' ','-')}">${sig}</span></td>
-                </tr>`;
-            }).join('');
+        document.getElementById('indicators-tbody').innerHTML = rows.map(r => {
+            const sig = scoreToSignal(r.score);
+            return `
+            <tr>
+                <td>${r.name}</td>
+                <td class="metric-value">${r.value}</td>
+                <td><span class="signal ${sig.toLowerCase().replace(' ','-')}">${sig}</span></td>
+            </tr>`;
+        }).join('');
     }
     
     function toggleIndicator(type, isChecked) {
@@ -912,6 +958,7 @@
 
 </body>
 </html>
+
 
 
 
