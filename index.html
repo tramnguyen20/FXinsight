@@ -410,8 +410,9 @@
             identical to the Python backtesting process.
         </p>
         <div style="display:flex; gap:20px; margin:20px 0;">
-            <button class="tf-btn active" onclick="loadForecast(1,this)">1 Day Ahead</button>
-            <button class="tf-btn" onclick="loadForecast(5,this)">5 Days Ahead</button>
+            <button class="tf-btn active" data-h="1">1 Day Ahead</button>
+            <button class="tf-btn" data-h="5">5 Days Ahead</button>
+
         </div>
         <div id="forecast-chart" style="height:520px;"></div>
         <div id="forecast-metrics"
@@ -806,22 +807,25 @@
     }
     
     function loadForecast(pair, horizon) {
-        fetch(`data/${pair}_${horizon}d.json`)
-            .then(res => res.json())
-            .then(data => {
-                actualSeriesFC.setData(data.actual);
-                forecastSeriesFC.setData(data.forecast);
-            })
-            .catch(err => console.error("Forecast load error:", err));
+      fetch(`data/${pair}_${horizon}d.json`)
+        .then(res => {
+          if (!res.ok) throw new Error("JSON not found");
+          return res.json();
+        })
+        .then(data => {
+          actualSeriesFC.setData(data.actual);
+          forecastSeriesFC.setData(data.forecast);
+        })
+        .catch(err => console.error("Forecast load error:", err));
     }
-    
+
     document
       .querySelector('[data-tab="forecast-tab"]')
       .addEventListener('click', () => {
         setTimeout(() => {
             if (!forecastInitialized) initForecastChart();
-            const activeBtn = document.querySelector('#forecast-tab .tf-btn.active');
-            const horizon = activeBtn ? Number(activeBtn.dataset.h) : 1;
+            const btn = document.querySelector('#forecast-tab .tf-btn.active');
+            const horizon = Number(btn.dataset.h);
             loadForecast(currentPair, horizon);
         }, 200);
     });
@@ -839,7 +843,3 @@
 
 </body>
 </html>
-
-
-
-
