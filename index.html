@@ -842,6 +842,12 @@
             if (lastPoint) {
                 document.getElementById("forecast-summary").innerText =
                   `${horizon}-day ahead forecast: ${lastPoint.value.toFixed(4)}`;}
+            
+            if (data.metrics) {
+            document.getElementById("fc-mae").innerText  = data.metrics.mae;
+            document.getElementById("fc-rmse").innerText = data.metrics.rmse;
+            document.getElementById("fc-mape").innerText = data.metrics.mape + "%";
+            }
         })
         .catch(err => console.error("Forecast load error:", err));
     }
@@ -870,6 +876,7 @@
 
 </body>
 </html>
+
 
 
 
