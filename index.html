@@ -585,95 +585,84 @@
     }
 
     function updateTechTimeframe(bars, el) {
-        document.querySelectorAll('#tech-toolbar .tf-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#tech-toolbar .tf-btn')
+            .forEach(b => b.classList.remove('active'));
         el.classList.add('active');
-        
-        // Lọc dữ liệu theo timeframe
+    
         const filteredData = currentRawData.slice(-bars);
-        
-        // Cập nhật lại radar và bảng chỉ số
-        updateTechTab(filteredData);
+        updateTechTab(filteredData, bars);
     }
 
-    function updateTechTab(data = currentRawData) {
-        if (!data.length) return;
+    function updateTechTab(data = currentRawData, tfBars = 22) {
+        if (data.length < 10) return;
+    
         const last = data[data.length - 1];
     
-        const change5d = getPeriodChange(5, data);
-        const oscScore = Math.min(Math.abs(change5d) * 15, 100);
+        /* ========= VOLATILITY ========= */
+        const lookback = Math.min(tfBars, data.length - 1);
+        const changeTF = getPeriodChange(lookback, data);
+        const oscScore = Math.min(Math.abs(changeTF) * 12, 100);
     
-        const smaData = calcSMA(data, 50);
-        let trendScore = 50, maDelta = 0;
+        /* ========= TREND ========= */
+        const maPeriod = Math.min(50, Math.floor(tfBars * 0.8));
+        const smaData = calcSMA(data, maPeriod);
+    
+        let trendScore = 50;
+        let maDelta = 0;
+    
         if (smaData.length) {
             const smaLast = smaData[smaData.length - 1].value;
             maDelta = ((last.close - smaLast) / smaLast) * 100;
-            trendScore = Math.max(0, Math.min(100, 50 + maDelta * 8));
+            trendScore = Math.max(0, Math.min(100, 50 + maDelta * 10));
         }
     
-        const ytdEl = document.getElementById("p-ytd");
-        const ytdChange = ytdEl ? parseFloat(ytdEl.innerText.replace("%","").replace("+","")) || 0 : 0;
-        const overallScore = Math.max(0, Math.min(100, 50 + (ytdChange * 3) + (trendScore - 50) * 0.3));
+        /* ========= OVERALL ========= */
+        const overallScore =
+            0.4 * oscScore +
+            0.4 * trendScore +
+            0.2 * Math.max(0, Math.min(100, 50 + changeTF * 5));
     
-        const needleVol = document.getElementById('needle-vol');
-        const needleTrend = document.getElementById('needle-trend');
-        const needleOverall = document.getElementById('needle-overall');
+        /* ========= UPDATE GAUGES ========= */
+        document.getElementById('needle-vol').style.transform =
+            `rotate(${scoreToDeg(oscScore)}deg)`;
+        document.getElementById('needle-trend').style.transform =
+            `rotate(${scoreToDeg(trendScore)}deg)`;
+        document.getElementById('needle-overall').style.transform =
+            `rotate(${scoreToDeg(overallScore)}deg)`;
     
-        if (needleVol) needleVol.style.transform = `rotate(${scoreToDeg(oscScore)}deg)`;
-        if (needleTrend) needleTrend.style.transform = `rotate(${scoreToDeg(trendScore)}deg)`;
-        if (needleOverall) needleOverall.style.transform = `rotate(${scoreToDeg(overallScore)}deg)`;
+        document.getElementById('status-vol').innerText = scoreToSignal(oscScore);
+        document.getElementById('status-trend').innerText = scoreToSignal(trendScore);
+        document.getElementById('status-overall').innerText = scoreToSignal(overallScore);
     
-        const statusVol = document.getElementById('status-vol');
-        const statusTrend = document.getElementById('status-trend');
-        const statusOverall = document.getElementById('status-overall');
+        /* ========= TABLE ========= */
+        const rows = [
+            {
+                name: `Volatility (${lookback}D Change)`,
+                value: `${changeTF >= 0 ? '+' : ''}${changeTF.toFixed(2)}%`,
+                signal: scoreToSignal(oscScore)
+            },
+            {
+                name: `Trend (MA${maPeriod})`,
+                value: `${maDelta >= 0 ? '+' : ''}${maDelta.toFixed(2)}%`,
+                signal: scoreToSignal(trendScore)
+            },
+            {
+                name: `Overall Technical Score`,
+                value: overallScore.toFixed(0),
+                signal: scoreToSignal(overallScore)
+            }
+        ];
     
-        if (statusVol) statusVol.textContent = scoreToSignal(oscScore);
-        if (statusTrend) statusTrend.textContent = scoreToSignal(trendScore);
-        if (statusOverall) statusOverall.textContent = scoreToSignal(overallScore);
-    
-        const rsiData = calcRSI(data);
-        const rsiVal = rsiData.length ? rsiData[rsiData.length-1].value : null;
-    
-        const rows = [];
-        if (rsiVal !== null) {
-            rows.push({
-                name: 'RSI (14)',
-                value: rsiVal.toFixed(1),
-                signal: scoreToSignal(rsiVal)
-            });
-        }
-        rows.push({
-            name: 'Volatility – Price Change',
-            value: (change5d >= 0 ? '+' : '') + change5d.toFixed(2) + '%',
-            signal: scoreToSignal(oscScore)
-        });
-        rows.push({
-            name: 'Trend (MA50) – Distance',
-            value: (maDelta >= 0 ? '+' : '') + maDelta.toFixed(2) + '%',
-            signal: scoreToSignal(trendScore)
-        });
-        rows.push({
-            name: 'YTD Performance',
-            value: (ytdChange >= 0 ? '+' : '') + ytdChange.toFixed(2) + '%',
-            signal: scoreToSignal(Math.max(0, Math.min(100, 50 + ytdChange * 3)))
-        });
-        rows.push({
-            name: 'Overall Summary Score',
-            value: overallScore.toFixed(0),
-            signal: scoreToSignal(overallScore)
-        });
-    
-        const tbody = document.getElementById('indicators-tbody');
-        if (tbody) {
-            tbody.innerHTML = rows.map(r => `
+        document.getElementById('indicators-tbody').innerHTML =
+            rows.map(r => `
                 <tr>
                     <td>${r.name}</td>
                     <td><span class="metric-value">${r.value}</span></td>
                     <td><span class="signal ${r.signal.toLowerCase().replace(' ','-')}">${r.signal}</span></td>
                 </tr>
             `).join('');
-        }
     }
-
+    
     function toggleIndicator(type, isChecked) {
         if (isChecked) {
             if (type === 'sma') {
@@ -897,6 +886,7 @@
 
 </body>
 </html>
+
 
 
 
