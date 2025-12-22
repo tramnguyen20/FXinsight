@@ -260,8 +260,7 @@
 <div id="tabs">
     <button class="tab-btn active" data-tab="chart-tab">Dashboard</button>
     <button class="tab-btn" data-tab="tech-tab">Technical Analysis</button>
-    <button class="tab-btn" data-tab="stats-tab">Stats</button>
-    <button class="tab-btn" data-tab="about-tab">About</button>
+    <button class="tab-btn" data-tab="forecast-tab">Forecast</button>
 </div>
 
 <div id="chart-tab" class="tab-content active">
@@ -400,14 +399,37 @@
     </div>
 </div>
 
-<div id="stats-tab" class="tab-content">
-    <h2>Performance Stats</h2>
-    <p>Detailed statistics and historical analysis metrics.</p>
-</div>
-
-<div id="about-tab" class="tab-content">
-    <h2>About FXInsight</h2>
-    <p>FXInsight is a real-time FX dashboard to track currency pairs and analyze trends.</p>
+<div id="forecast-tab" class="tab-content">
+    <div style="background: var(--panel); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+        <h2 style="color: var(--accent); margin-top: 0;">
+            ARIMA Forecast
+        </h2>
+        <p style="color:#8b949e; font-size:14px; max-width:800px;">
+            Rolling ARIMA forecast based on historical FX rates.
+            The forecast strictly follows an expanding-window ARIMA retraining logic
+            identical to the Python backtesting process.
+        </p>
+        <div style="display:flex; gap:20px; margin:20px 0;">
+            <button class="tf-btn active" onclick="loadForecast(1,this)">1 Day Ahead</button>
+            <button class="tf-btn" onclick="loadForecast(5,this)">5 Days Ahead</button>
+        </div>
+        <div id="forecast-chart" style="height:520px;"></div>
+        <div id="forecast-metrics"
+             style="display:flex; gap:20px; margin-top:20px; flex-wrap:wrap;">
+            <div class="perf-item">
+                <span class="perf-label">MAE</span>
+                <span id="fc-mae" class="perf-val">--</span>
+            </div>
+            <div class="perf-item">
+                <span class="perf-label">RMSE</span>
+                <span id="fc-rmse" class="perf-val">--</span>
+            </div>
+            <div class="perf-item">
+                <span class="perf-label">MAPE</span>
+                <span id="fc-mape" class="perf-val">--</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -750,7 +772,71 @@
     initChart();
     mainSeries = chart.addCandlestickSeries({ upColor: "#26a69a", downColor: "#ef5350" });
     loadData("usd");
+
+    let forecastChart, actualSeriesFC, forecastSeriesFC;
+    let forecastInitialized = false;
+    
+    function initForecastChart() {
+        forecastChart = LightweightCharts.createChart(
+            document.getElementById("forecast-chart"),
+            {
+                layout: { background: { color: "#0b1220" }, textColor: "#cbd5f5" },
+                grid: {
+                    vertLines: { color: "#1e293b" },
+                    horzLines: { color: "#1e293b" }
+                },
+                timeScale: { borderColor: "#334155", rightOffset: 5 },
+            }
+        );
+    
+        actualSeriesFC = forecastChart.addLineSeries({
+            color: "#2962ff",
+            lineWidth: 3
+        });
+    
+        forecastSeriesFC = forecastChart.addLineSeries({
+            color: "#ff9800",
+            lineWidth: 2,
+            lineStyle: LightweightCharts.LineStyle.Dashed
+        });
+    
+        forecastInitialized = true;
+    }
+    
+    function loadForecast(horizon, btn) {
+        document.querySelectorAll('#forecast-tab .tf-btn')
+            .forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    
+        const pair = document.getElementById("pair").value;
+    
+        fetch(`/api/forecast?pair=${pair}&horizon=${horizon}`)
+            .then(res => res.json())
+            .then(data => {
+    
+                actualSeriesFC.setData(data.actual);
+                forecastSeriesFC.setData(data.forecast);
+    
+                document.getElementById("fc-mae").innerText =
+                    data.metrics.mae.toFixed(3);
+                document.getElementById("fc-rmse").innerText =
+                    data.metrics.rmse.toFixed(3);
+                document.getElementById("fc-mape").innerText =
+                    data.metrics.mape.toFixed(2) + "%";
+    
+                forecastChart.timeScale().fitContent();
+            });
+    }
+    
+    /* Auto init when switching tab */
+    document.querySelector('[data-tab="forecast-tab"]').addEventListener('click', () => {
+        setTimeout(() => {
+            if (!forecastInitialized) initForecastChart();
+            loadForecast(1, document.querySelector('#forecast-tab .tf-btn'));
+        }, 200);
+    });
 </script>
 
 </body>
 </html>
+
