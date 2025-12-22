@@ -335,9 +335,19 @@
 </div>
 
 <div id="tech-tab" class="tab-content">
+    <div id="tech-toolbar" style="padding: 8px 16px; background: var(--panel); display: flex; flex-wrap: wrap; align-items: center; gap: 20px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px;">
+        <div class="control-group">
+            <strong>Timeframe:</strong>
+            <button class="tf-btn" data-tf="5" onclick="updateTechTimeframe(5, this)">5D</button>
+            <button class="tf-btn" data-tf="22" onclick="updateTechTimeframe(22, this)">1M</button>
+            <button class="tf-btn" data-tf="66" onclick="updateTechTimeframe(66, this)">3M</button>
+            <button class="tf-btn" data-tf="132" onclick="updateTechTimeframe(132, this)">6M</button>
+            <button class="tf-btn" data-tf="252" onclick="updateTechTimeframe(252, this)">1Y</button>
+        </div>
+    </div>
     <div class="radar-grid">
         <div class="radar-card normal">
-            <h3>Volatility (5D)</h3>
+            <h3>Volatility</h3>
             <div class="gauge-container">
                 <div class="gauge-arc"></div>
                 <div class="gauge-color-layer"></div>
@@ -567,51 +577,62 @@
         return results;
     }
 
-    function getPeriodChange(period) {
-        if (currentRawData.length <= period) return 0;
-        const startPrice = currentRawData[currentRawData.length - 1 - period].close;
-        const lastPrice = currentRawData[currentRawData.length - 1].close;
+    function getPeriodChange(period, data = currentRawData) {
+        if (data.length <= period) return 0;
+        const startPrice = data[data.length - 1 - period].close;
+        const lastPrice = data[data.length - 1].close;
         return ((lastPrice - startPrice) / startPrice) * 100;
     }
 
-    function updateTechTab() {
-        if (!currentRawData.length) return;
-        const last = currentRawData[currentRawData.length - 1];
+    function updateTechTimeframe(bars, el) {
+        document.querySelectorAll('#tech-toolbar .tf-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        
+        // Lọc dữ liệu theo timeframe
+        const filteredData = currentRawData.slice(-bars);
+        
+        // Cập nhật lại radar và bảng chỉ số
+        updateTechTab(filteredData);
+    }
 
-        const change5d = getPeriodChange(5);
+    function updateTechTab(data = currentRawData) {
+        if (!data.length) return;
+        const last = data[data.length - 1];
+    
+        const change5d = getPeriodChange(5, data);
         const oscScore = Math.min(Math.abs(change5d) * 15, 100);
-
-        const smaData = calcSMA(currentRawData, 50);
+    
+        const smaData = calcSMA(data, 50);
         let trendScore = 50, maDelta = 0;
         if (smaData.length) {
             const smaLast = smaData[smaData.length - 1].value;
             maDelta = ((last.close - smaLast) / smaLast) * 100;
             trendScore = Math.max(0, Math.min(100, 50 + maDelta * 8));
         }
-
+    
         const ytdEl = document.getElementById("p-ytd");
         const ytdChange = ytdEl ? parseFloat(ytdEl.innerText.replace("%","").replace("+","")) || 0 : 0;
         const overallScore = Math.max(0, Math.min(100, 50 + (ytdChange * 3) + (trendScore - 50) * 0.3));
-
+    
         const needleVol = document.getElementById('needle-vol');
         const needleTrend = document.getElementById('needle-trend');
         const needleOverall = document.getElementById('needle-overall');
-
+    
         if (needleVol) needleVol.style.transform = `rotate(${scoreToDeg(oscScore)}deg)`;
         if (needleTrend) needleTrend.style.transform = `rotate(${scoreToDeg(trendScore)}deg)`;
         if (needleOverall) needleOverall.style.transform = `rotate(${scoreToDeg(overallScore)}deg)`;
-
+    
         const statusVol = document.getElementById('status-vol');
         const statusTrend = document.getElementById('status-trend');
         const statusOverall = document.getElementById('status-overall');
-
+    
         if (statusVol) statusVol.textContent = scoreToSignal(oscScore);
         if (statusTrend) statusTrend.textContent = scoreToSignal(trendScore);
         if (statusOverall) statusOverall.textContent = scoreToSignal(overallScore);
-
-        const rsiData = calcRSI(currentRawData);
+    
+        const rsiData = calcRSI(data);
         const rsiVal = rsiData.length ? rsiData[rsiData.length-1].value : null;
-
+    
         const rows = [];
         if (rsiVal !== null) {
             rows.push({
@@ -621,7 +642,7 @@
             });
         }
         rows.push({
-            name: 'Volatility (5D) – Price Change',
+            name: 'Volatility – Price Change',
             value: (change5d >= 0 ? '+' : '') + change5d.toFixed(2) + '%',
             signal: scoreToSignal(oscScore)
         });
@@ -640,7 +661,7 @@
             value: overallScore.toFixed(0),
             signal: scoreToSignal(overallScore)
         });
-
+    
         const tbody = document.getElementById('indicators-tbody');
         if (tbody) {
             tbody.innerHTML = rows.map(r => `
@@ -876,6 +897,7 @@
 
 </body>
 </html>
+
 
 
 
