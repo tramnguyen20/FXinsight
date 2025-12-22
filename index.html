@@ -776,6 +776,8 @@
     let forecastChart, actualSeriesFC, forecastSeriesFC;
     let forecastInitialized = false;
     
+    let currentPair = "usd";
+    
     function initForecastChart() {
         forecastChart = LightweightCharts.createChart(
             document.getElementById("forecast-chart"),
@@ -803,40 +805,44 @@
         forecastInitialized = true;
     }
     
-    function loadForecast(horizon, btn) {
-        document.querySelectorAll('#forecast-tab .tf-btn')
-            .forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-    
-        const pair = document.getElementById("pair").value;
-    
-        fetch(`/api/forecast?pair=${pair}&horizon=${horizon}`)
+    function loadForecast(pair, horizon) {
+        fetch(`data/${pair}_${horizon}d.json`)
             .then(res => res.json())
             .then(data => {
-    
                 actualSeriesFC.setData(data.actual);
                 forecastSeriesFC.setData(data.forecast);
-    
-                document.getElementById("fc-mae").innerText =
-                    data.metrics.mae.toFixed(3);
-                document.getElementById("fc-rmse").innerText =
-                    data.metrics.rmse.toFixed(3);
-                document.getElementById("fc-mape").innerText =
-                    data.metrics.mape.toFixed(2) + "%";
-    
-                forecastChart.timeScale().fitContent();
-            });
+            })
+            .catch(err => console.error("Forecast load error:", err));
     }
     
-    /* Auto init when switching tab */
-    document.querySelector('[data-tab="forecast-tab"]').addEventListener('click', () => {
+    document
+      .querySelector('[data-tab="forecast-tab"]')
+      .addEventListener('click', () => {
         setTimeout(() => {
             if (!forecastInitialized) initForecastChart();
-            loadForecast(1, document.querySelector('#forecast-tab .tf-btn'));
+    
+            // lấy horizon từ button đang active
+            const activeBtn = document.querySelector('#forecast-tab .tf-btn.active');
+            const horizon = activeBtn ? Number(activeBtn.dataset.h) : 1;
+    
+            loadForecast(currentPair, horizon);
         }, 200);
+    });
+    
+    document.querySelectorAll('#forecast-tab .tf-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#forecast-tab .tf-btn')
+                .forEach(b => b.classList.remove('active'));
+    
+            btn.classList.add('active');
+    
+            const horizon = Number(btn.dataset.h);
+            loadForecast(currentPair, horizon);
+        });
     });
 </script>
 
 </body>
 </html>
+
 
