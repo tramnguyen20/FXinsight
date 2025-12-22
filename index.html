@@ -820,10 +820,8 @@
       .addEventListener('click', () => {
         setTimeout(() => {
             if (!forecastInitialized) initForecastChart();
-    
             const activeBtn = document.querySelector('#forecast-tab .tf-btn.active');
             const horizon = activeBtn ? Number(activeBtn.dataset.h) : 1;
-    
             loadForecast(currentPair, horizon);
         }, 200);
     });
@@ -832,9 +830,7 @@
         btn.addEventListener('click', () => {
             document.querySelectorAll('#forecast-tab .tf-btn')
                 .forEach(b => b.classList.remove('active'));
-    
             btn.classList.add('active');
-    
             const horizon = Number(btn.dataset.h);
             loadForecast(currentPair, horizon);
         });
@@ -843,6 +839,7 @@
 
 </body>
 </html>
+
 
 
 
