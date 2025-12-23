@@ -853,6 +853,7 @@
     function renderDataWithGauges() {
         renderData();
         calculatePerformance();
+        updateTechTab(currentRawData, 5);
         updateTechTimeframe(5, document.querySelector('[data-tf="5"]'));
         setTimeout(updateTechTab, 300);
     }
@@ -987,6 +988,7 @@
 
 </body>
 </html>
+
 
 
 
