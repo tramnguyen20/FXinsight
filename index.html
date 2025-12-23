@@ -498,6 +498,9 @@
             if(btn.dataset.tab === 'chart-tab') {
                 setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
             }
+            if (btn.dataset.tab === 'tech-tab') {
+                setTimeout(initTechnicalTab, 100);
+            }
         });
     });
 
@@ -853,9 +856,23 @@
     function renderDataWithGauges() {
         renderData();
         calculatePerformance();
-        updateTechTab(currentRawData, 5);
         updateTechTimeframe(5, document.querySelector('[data-tf="5"]'));
-        setTimeout(updateTechTab, 300);
+    }
+
+    function initTechnicalTab() {
+        const defaultBtn = document.querySelector('#tech-toolbar .tf-btn[data-tf="5"]');
+        if (!defaultBtn) return;
+    
+        document
+            .querySelectorAll('#tech-toolbar .tf-btn')
+            .forEach(b => b.classList.remove('active'));
+    
+        defaultBtn.classList.add('active');
+    
+        const bars = Number(defaultBtn.dataset.tf);
+        const sliced = currentRawData.slice(-bars);
+    
+        updateTechTab(sliced, bars);
     }
 
     function loadData(pair) {
@@ -988,13 +1005,3 @@
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
