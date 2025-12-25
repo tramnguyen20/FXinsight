@@ -439,9 +439,7 @@
             <button class="tf-btn active" data-h="1">1 Day Ahead</button>
             <button class="tf-btn" data-h="5">5 Days Ahead</button>
         </div>
-        <div id="forecast-summary"
-             style="margin-top:10px; color:#e5e7eb; font-size:15px;">
-        </div>
+        <div id="forecast-card" class="forecast-card"></div>
         <div id="forecast-chart" style="height:520px;"></div>
         <div id="forecast-legend"
              style="display:flex; gap:18px; align-items:center;
@@ -967,10 +965,31 @@
           actualSeriesFC.setData(data.actual);
           forecastSeriesFC.setData(data.forecast);
             
-            const lastPoint = data.forecast[data.forecast.length - 1];
-            if (lastPoint) {
-                document.getElementById("forecast-summary").innerText =
-                  `${horizon}-day ahead forecast: ${lastPoint.value.toFixed(4)}`;}
+            const lastActual   = data.actual[data.actual.length - 1]?.value;
+            const lastForecast = data.forecast[data.forecast.length - 1]?.value;
+            
+            if (lastActual && lastForecast) {
+                const pctChange = ((lastForecast - lastActual) / lastActual) * 100;
+                const trend =
+                    pctChange > 0 ? "Bullish" :
+                    pctChange < 0 ? "Bearish" : "Neutral";
+            
+                const trendColor =
+                    trend === "Bullish" ? "#16a34a" :
+                    trend === "Bearish" ? "#dc2626" : "#6b7280";
+            
+                document.getElementById("forecast-card").innerHTML = `
+                    <div class="fc-title">${horizon}-Day Forecast</div>
+            
+                    <div class="fc-price">
+                        ${lastForecast.toFixed(4)}
+                    </div>
+            
+                    <div class="fc-trend" style="color:${trendColor}">
+                        ${trend} (${pctChange.toFixed(2)}%)
+                    </div>
+                `;
+            }
             
             if (data.metrics) {
             document.getElementById("fc-mae").innerText  = data.metrics.mae;
