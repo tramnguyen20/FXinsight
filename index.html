@@ -502,6 +502,29 @@
         });
     });
 
+    function updateChartByDate() {
+        const startVal = document.getElementById('startDate').value;
+        const endVal = document.getElementById('endDate').value;
+    
+        if (!startVal || !endVal || !currentRawData.length) return;
+    
+        const dStart = new Date(startVal);
+        const dEnd = new Date(endVal);
+    
+        const filteredData = currentRawData.filter(d => {
+            const dDate = new Date(d.time.year, d.time.month - 1, d.time.day);
+            return dDate >= dStart && dDate <= dEnd;
+        });
+    
+        if (filteredData.length > 0) {
+            mainSeries.setData(filteredData);
+            chart.timeScale().fitContent();
+        }
+    }
+    
+    document.getElementById('startDate').addEventListener('change', updateChartByDate);
+    document.getElementById('endDate').addEventListener('change', updateChartByDate);
+        
     /* Gauge helpers */
     function scoreToDeg(score) {
         return (score - 50) * (180 / 100); // 0..100 -> -90..+90
@@ -1024,4 +1047,5 @@
 
 </body>
 </html>
+
 
