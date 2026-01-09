@@ -519,6 +519,7 @@
         if (filteredData.length > 0) {
             mainSeries.setData(filteredData);
             chart.timeScale().fitContent();
+            calculatePerformance();
         }
     }
     
@@ -822,48 +823,69 @@
     }
 
     function calculatePerformance() {
-        if (!currentRawData.length) return;
-        const last = currentRawData[currentRawData.length - 1];
-        const today = new Date();
-
-        const getChange = (periodBars) => {
-            if (currentRawData.length <= periodBars) return null;
-            const startPrice = currentRawData[currentRawData.length - 1 - periodBars].close;
-            return ((last.close - startPrice) / startPrice) * 100;
+        const data = mainSeries.data();
+        if (!data || data.length < 2) return;
+    
+        const first = data[0];
+        const last  = data[data.length - 1];
+    
+        const pct = (a, b) => ((b - a) / a) * 100;
+    
+        const periods = {
+            "p-1d": 1,
+            "p-5d": 5,
+            "p-1m": 22,
+            "p-6m": 132,
+            "p-1y": 252,
+            "p-5y": 1260
         };
-
-        const getYTD = () => {
-            const startOfYear = currentRawData.find(d => d.time.year === today.getFullYear());
-            return startOfYear ? ((last.close - startOfYear.close) / startOfYear.close) * 100 : null;
-        };
-
-        const display = (id, val) => {
+    
+        const getVal = d => d.close ?? d.value;
+    
+        Object.entries(periods).forEach(([id, bars]) => {
             const el = document.getElementById(id);
             if (!el) return;
-            if (val === null) { el.innerText = "--"; el.className = "perf-val"; return; }
-            el.innerText = (val > 0 ? "+" : "") + val.toFixed(2) + "%";
-            el.className = "perf-val " + (val >= 0 ? "val-up" : "val-down");
-        };
-
-        display("p-1d", last.changePercent || getChange(1));
-        display("p-5d", getChange(5));
-        display("p-1m", getChange(22));
-        display("p-6m", getChange(132));
-        display("p-ytd", getYTD());
-        display("p-1y", getChange(252));
-        display("p-5y", getChange(1260));
-        display("p-all", ((last.close - currentRawData[0].close) / currentRawData[0].close) * 100);
+    
+            if (data.length > bars) {
+                const start = getVal(data[data.length - 1 - bars]);
+                const end   = getVal(last);
+                const val   = pct(start, end);
+    
+                el.innerText = (val > 0 ? "+" : "") + val.toFixed(2) + "%";
+                el.className = "perf-val " + (val >= 0 ? "val-up" : "val-down");
+            } else {
+                el.innerText = "--";
+            }
+        });
+    
+        // ALL (visible range)
+        const allEl = document.getElementById("p-all");
+        if (allEl) {
+            const val = pct(getVal(first), getVal(last));
+            allEl.innerText = (val > 0 ? "+" : "") + val.toFixed(2) + "%";
+            allEl.className = "perf-val " + (val >= 0 ? "val-up" : "val-down");
+        }
     }
 
     function zoomTimeframe(bars, el) {
         document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
         if (el) el.classList.add('active');
+    
         const data = mainSeries.data();
         if (!data || !data.length) return;
-        if (bars === 'all') chart.timeScale().fitContent();
-        else chart.timeScale().setVisibleRange({ from: data[Math.max(0, data.length - bars)].time, to: data[data.length - 1].time });
+    
+        if (bars === 'all') {
+            chart.timeScale().fitContent();
+        } else {
+            chart.timeScale().setVisibleRange({
+                from: data[Math.max(0, data.length - bars)].time,
+                to: data[data.length - 1].time
+            });
+        }
+    
+        setTimeout(calculatePerformanceFromVisibleData, 50);
     }
-
+    
     function renderData() {
         if (!currentRawData.length) return;
         mainSeries.setData(currentRawData);
@@ -1047,5 +1069,3 @@
 
 </body>
 </html>
-
-
