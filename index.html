@@ -475,6 +475,13 @@
 </div>
 
 <script>
+    const tfMap = {
+      5:   { rsi: 7,  ma: 20 },
+      22:  { rsi: 14, ma: 50 },
+      66:  { rsi: 21, ma: 100 },
+      132: { rsi: 28, ma: 150 },
+      252: { rsi: 50, ma: 200 }
+    };
     
     /* Tabs */
     const tabButtons = document.querySelectorAll('.tab-btn');
@@ -690,80 +697,51 @@
             .forEach(b => b.classList.remove('active'));
         el.classList.add('active');
     
-        const slice = currentRawData.slice(-bars);
-        updateTechTab(slice);
+        const filteredData = currentRawData.slice(-bars);
+        updateTechTab(filteredData, bars);
     }
 
-    function updateTechTab(slice) {
-        if (slice.length < 50) return;
+    function updateTechTab(data = currentRawData, tfBars = 22) {
+        if (data.length < tfBars) return;
     
+        const cfg = tfMap[tfBars] || tfMap[22];
+        const slice = data.slice(-tfBars);
         const last = slice.at(-1);
     
         /* ===== OSCILLATORS ===== */
-        const rsi   = calcRSI(slice, 14).at(-1)?.value ?? 50;
-        const macd  = calcMACDValue(slice);
-        const stoch = calcStochasticValue(slice, 14);
-        const cci   = calcCCIValue(slice, 20);
-        const adx   = calcADX(slice, 14);
-
-        function rsiSignal(v) {
-            if (v < 30) return "Buy";
-            if (v > 70) return "Sell";
-            return "Neutral";
-        }
-        
-        function macdSignal(v) {
-            if (v > 0) return "Buy";
-            if (v < 0) return "Sell";
-            return "Neutral";
-        }
-        
-        function stochasticSignal(v) {
-            if (v < 20) return "Buy";
-            if (v > 80) return "Sell";
-            return "Neutral";
-        }
-        
-        function cciSignal(v) {
-            if (v < -100) return "Buy";
-            if (v > 100) return "Sell";
-            return "Neutral";
-        }
-        
-        function adxSignal(v) {
-            if (v < 20) return "Neutral";
-            return "Trend";
-        }
+        const rsi = calcRSI(slice, cfg.rsi).at(-1)?.value ?? 50;
+        const macd = calcMACDValue(slice);
+        const stoch = calcStochasticValue(slice);
+        const cci = calcCCIValue(slice);
+        const adx = calcADX(slice);
+        const willr = calcWilliamsR(slice);
     
-        const oscSignals = [
-            rsiSignal(rsi),
-            macdSignal(macd),
-            stochasticSignal(stoch),
-            cciSignal(cci)
-        ];
-        
-        const buyCount  = oscSignals.filter(s => s === "Buy").length;
-        const sellCount = oscSignals.filter(s => s === "Sell").length;
-        
-        let oscScore = 50;
-        if (buyCount > sellCount) oscScore = 70;
-        if (sellCount > buyCount) oscScore = 30;
+        const rsiScore   = 100 - Math.abs(rsi - 50) * 2;
+        const macdScore  = 50 + macd * 20;
+        const stochScore = 100 - Math.abs(stoch - 50) * 2;
+        const cciScore   = 100 - Math.min(Math.abs(cci) / 2, 100);
+        const adxScore   = Math.min(adx, 100);
+        const willrScore = 100 - Math.abs(willr - 50) * 2;
+    
+        const oscScore = Math.max(0, Math.min(100,
+            (rsiScore + macdScore + stochScore + cciScore + adxScore + willrScore) / 6
+        ));
     
         /* ===== TREND (EMA) ===== */
-        const ema20  = calcEMA(currentRawData, 20).at(-1)?.value;
-        const ema50  = calcEMA(currentRawData, 50).at(-1)?.value;
-        const ema200 = calcEMA(currentRawData, 200).at(-1)?.value;
+        const ema20 = calcEMA(data, 20).at(-1)?.value;
+        const ema50 = calcEMA(data, 50).at(-1)?.value;
+        const ema200 = calcEMA(data, 200).at(-1)?.value;
     
         const ema20Delta = ema20 ? ((last.close - ema20) / ema20) * 100 : 0;
         const ema50Delta = ema50 ? ((last.close - ema50) / ema50) * 100 : 0;
         const ema200Delta = ema200 ? ((last.close - ema200) / ema200) * 100 : 0;
     
-        let trendScore = 50;
-        if (last.close > ema20 && last.close > ema50) trendScore = 70;
-        if (last.close < ema20 && last.close < ema50) trendScore = 30;
+        const trendScore = Math.max(0, Math.min(100,
+            50 + (ema20Delta + ema50Delta + ema200Delta) / 3 * 10
+        ));
     
         /* ===== OVERALL ===== */
-        const overallScore = Math.round((oscScore + trendScore) / 2);
+        const overallScore = 0.5 * oscScore + 0.5 * trendScore;
     
         /* ===== UPDATE GAUGES ===== */
         document.getElementById('needle-vol').style.transform = `rotate(${scoreToDeg(oscScore)}deg)`;
@@ -776,11 +754,12 @@
     
         /* ===== OSCILLATORS TABLE ===== */
         const oscillatorsRows = [
-          { name: "RSI (14)", value: rsi.toFixed(2), signal: rsiSignal(rsi) },
-          { name: "MACD", value: macd.toFixed(3), signal: macdSignal(macd) },
-          { name: "Stochastic", value: stoch.toFixed(2), signal: stochasticSignal(stoch) },
-          { name: "CCI", value: cci.toFixed(2), signal: cciSignal(cci) },
-          { name: "ADX", value: adx.toFixed(2), signal: adxSignal(adx) }
+            { name: `RSI (${cfg.rsi})`, value: rsi.toFixed(2), score: rsiScore },
+            { name: `MACD`, value: macd.toFixed(3), score: macdScore },
+            { name: `Stochastic`, value: stoch.toFixed(2), score: stochScore },
+            { name: `CCI`, value: cci.toFixed(2), score: cciScore },
+            { name: `ADX`, value: adx.toFixed(2), score: adxScore },
+            { name: `Williams %R`, value: willr.toFixed(2), score: willrScore }
         ];
         document.getElementById('oscillators-tbody').innerHTML = oscillatorsRows.map(r => {
             const sig = scoreToSignal(r.score);
