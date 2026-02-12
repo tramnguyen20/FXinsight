@@ -428,12 +428,11 @@
 <div id="forecast-tab" class="tab-content">
     <div style="background: var(--panel); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
         <h2 style="color: var(--accent); margin-top: 0;">
-            ARIMA Forecast
+            Exchange Rate Forecast
         </h2>
         <p style="color:#8b949e; font-size:14px; max-width:800px;">
-            Rolling ARIMA forecast based on historical FX rates.
-            The forecast strictly follows an expanding-window ARIMA retraining logic
-            identical to the Python backtesting process.
+            These forecasts are generated using a rolling estimation approach based on historical exchange rate data. 
+            The model is re-estimated as new data becomes available, allowing projections to adapt gradually to evolving market conditions while remaining consistent with the backtesting framework.
         </p>
         <div style="display:flex; gap:20px; margin:20px 0;">
             <button class="tf-btn active" data-h="1">1 Day Ahead</button>
